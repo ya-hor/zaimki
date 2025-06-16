@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zaimki</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #111827;
+            --text-dark: #e5e7eb;
+            --card-bg-dark: rgba(31, 41, 55, 0.5);
+            --border-dark: rgba(255, 255, 255, 0.2);
+
+            --bg-light: #f3f4f6;
+            --text-light: #1f2937;
+            --card-bg-light: rgba(255, 255, 255, 0.6);
+            --border-light: rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-dark);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body.light {
+            background-color: var(--bg-light);
+            color: var(--text-light);
+        }
+        
+        .glass-card {
+            background-color: var(--card-bg-dark);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 1.5rem;
+            border: 1px solid var(--border-dark);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        body.light .glass-card {
+            background-color: var(--card-bg-light);
+            border-color: var(--border-light);
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, #4f46e5, #f97316);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+            z-index: -1;
+            opacity: 0.4;
+        }
+
+        body.light::before {
+            opacity: 0.2;
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .toggle-checkbox:checked { right: 0; border-color: #68D391; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #68D391; }
+        
+        .btn-answer.correct { animation: correct-pulse 0.5s; background-color: rgba(16, 185, 129, 0.3) !important; border-color: #10B981 !important; }
+        .btn-answer.incorrect { animation: incorrect-shake 0.5s; background-color: rgba(239, 68, 68, 0.3) !important; border-color: #EF4444 !important; }
+
+        @keyframes correct-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        @keyframes incorrect-shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        
+        #reviewModal { transition: opacity 0.3s ease; }
+        
+        .gemini-btn { background-color: rgba(139, 92, 246, 0.2); border: 1px solid #8B5CF6; }
+        .gemini-btn:hover { background-color: rgba(139, 92, 246, 0.4); }
+        .gemini-explanation { background-color: rgba(30, 41, 59, 0.5); border-left: 3px solid #8B5CF6; }
+        body.light .gemini-explanation { background-color: rgba(249, 250, 251, 0.8); }
+        
+        .spinner { border: 4px solid rgba(255,255,255,0.3); border-left-color: #fff; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body class="dark">
+
+    <!-- Theme Switcher -->
+    <div class="absolute top-4 right-4 flex items-center space-x-2 text-sm z-10">
+        <span>☀️</span>
+        <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+            <input type="checkbox" name="toggle" id="theme-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+            <label for="theme-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+        </div>
+        <span>🌙</span>
+    </div>
+
+    <main class="min-h-screen w-full flex items-center justify-center p-4">
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="glass-card p-8 md:p-12 text-center w-full max-w-2xl">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">Zaimki</h1>
+            <p class="text-lg md:text-xl mb-8 opacity-80">Sprawdź swoją wiedzę na temat krótkich i długich form zaimków w języku polskim. Wybierz poprawną odpowiedź w każdym z pytań.</p>
+            <button id="start-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-full text-lg transition-all duration-300 transform hover:scale-105 shadow-lg">Rozpocznij grę</button>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div id="quiz-screen" class="hidden w-full max-w-3xl">
+            <div class="glass-card p-6 md:p-10">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">Pytanie</h2>
+                    <div id="progress-text" class="text-lg font-mono"></div>
+                </div>
+                <div class="w-full bg-white/10 rounded-full h-2.5 mb-6">
+                    <div id="progress-bar" class="bg-green-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="question-text" class="text-2xl md:text-3xl font-medium mb-8 min-h-[100px] flex items-center"></p>
+                <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="hidden glass-card p-8 md:p-12 text-center w-full max-w-2xl">
+            <h1 class="text-4xl font-bold mb-2">Koniec Gry!</h1>
+            <p class="text-2xl mb-6">Twój wynik:</p>
+            <p id="score-text" class="text-7xl font-bold text-green-400 mb-8"></p>
+            
+            <div id="gemini-analysis-container" class="my-6 text-left">
+                <button id="gemini-analyze-button" class="hidden gemini-btn w-full flex items-center justify-center text-white font-bold py-3 px-6 rounded-full transition-transform transform hover:scale-105 mb-4">✨ Przeanalizuj moje błędy</button>
+                <div id="gemini-analysis-content" class="gemini-explanation p-4 rounded-md hidden"></div>
+            </div>
+
+            <div id="gemini-actions" class="flex flex-col md:flex-row justify-center gap-4 mb-4">
+                 <button id="gemini-generate-button" class="gemini-btn flex items-center justify-center text-white font-bold py-3 px-6 rounded-full transition-transform transform hover:scale-105">✨ Wygeneruj nowe pytania</button>
+            </div>
+            <div class="flex flex-col md:flex-row justify-center gap-4">
+                <button id="retry-incorrect-button" class="hidden bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 px-6 rounded-full transition-transform transform hover:scale-105">Popraw błędy</button>
+                <button id="review-button" class="hidden bg-blue-500 hover:bg-blue-400 text-white font-bold py-3 px-6 rounded-full transition-transform transform hover:scale-105">Zobacz błędy</button>
+                <button id="play-again-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-full transition-transform transform hover:scale-105">Zagraj jeszcze raz</button>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Review Modal -->
+    <div id="reviewModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden opacity-0 z-50" onclick="this.classList.add('hidden', 'opacity-0')">
+        <div class="glass-card max-w-3xl w-full max-h-[80vh] overflow-y-auto p-8" onclick="event.stopPropagation()">
+            <h2 class="text-3xl font-bold mb-6 text-center">Twoje błędy</h2>
+            <div id="review-content" class="space-y-6"></div>
+            <button class="mt-8 mx-auto block bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-6 rounded-full" onclick="document.getElementById('reviewModal').classList.add('hidden', 'opacity-0')">Zamknij</button>
+        </div>
+    </div>
+    
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex-col items-center justify-center hidden z-50">
+        <div class="spinner"></div>
+        <p id="loading-text" class="text-white mt-4 text-lg">Przetwarzanie...</p>
+    </div>
+
+    <script type="module">
+        // --- DOM Elements ---
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultsScreen = document.getElementById('results-screen');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+
+        const startButton = document.getElementById('start-button');
+        const playAgainButton = document.getElementById('play-again-button');
+        const reviewButton = document.getElementById('review-button');
+        const retryIncorrectButton = document.getElementById('retry-incorrect-button');
+        
+        const geminiGenerateButton = document.getElementById('gemini-generate-button');
+        const geminiAnalyzeButton = document.getElementById('gemini-analyze-button');
+
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const progressText = document.getElementById('progress-text');
+        const progressBar = document.getElementById('progress-bar');
+        const scoreText = document.getElementById('score-text');
+        
+        const reviewModal = document.getElementById('reviewModal');
+        const reviewContent = document.getElementById('review-content');
+
+        const themeToggle = document.getElementById('theme-toggle');
+
+        // --- Audio Context for Sound Effects ---
+        let audioContext;
+        
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioContext) return;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+
+            if (type === 'correct') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(880, audioContext.currentTime + 0.1);
+            } else if (type === 'incorrect') {
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(150, audioContext.currentTime + 0.15);
+            }
+
+            oscillator.start(audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        }
+        
+        // --- Questions Database ---
+        const allQuestions = [
+            // Ćwiczenie 1 (je/ich) - 5
+            { question: "Lubię czytać książki. Lubię ___ czytać.", options: ["je", "ich"], answer: "je" },
+            { question: "Chciałabym poznać twoich przyjaciół. Chciałabym ___ poznać.", options: ["je", "ich"], answer: "ich" },
+            { question: "Niania obserwuje dzieci. Niania ___ obserwuje.", options: ["je", "ich"], answer: "je" },
+            { question: "Znasz jakieś polskie aktorki? Znasz ___?", options: ["je", "ich"], answer: "je" },
+            { question: "Widziałam w sklepie świetne nowe komputery. Widziałam ___ w sklepie.", options: ["je", "ich"], answer: "ich" },
+            // Ćwiczenie 1 (różne formy) - 5
+            { question: "___ nigdy nie boli głowa.", options: ["Mi", "Mnie"], answer: "Mi" },
+            { question: "Ona ___ nigdy nie zdradzi.", options: ["ci", "ciebie", "cię"], answer: "cię" },
+            { question: "To przykra scena, gdy ___ obrażają.", options: ["jej", "ją"], answer: "ją" },
+            { question: "Matka dobrze się ___ opiekowała.", options: ["nią", "jej", "niej"], answer: "nią" },
+            { question: "Co tam u ___ słychać?", options: ["ciebie", "cię"], answer: "ciebie" },
+            // Ćwiczenie 1 (cię/ciebie) - 5
+            { question: "Lubię tylko ___.", options: ["cię", "ciebie"], answer: "ciebie" },
+            { question: "Cenię ___ bardzo za to, jaka jesteś.", options: ["cię", "ciebie"], answer: "cię" },
+            { question: "Kocham nie jego, a ___.", options: ["cię", "ciebie"], answer: "ciebie" },
+            { question: "Słuchaliśmy ___ uważnie.", options: ["cię", "ciebie"], answer: "cię" },
+            { question: "Proszę ___ o pomoc.", options: ["cię", "ciebie"], answer: "cię" },
+            // Ćwiczenie 3 (ci/tobie) - 5
+            { question: "Zaufam ___!", options: ["ci", "tobie"], answer: "ci" },
+            { question: "Zaufam najbardziej ___!", options: ["ci", "tobie"], answer: "tobie" },
+            { question: "Chcę ___ opisać śmieszną sytuację.", options: ["ci", "tobie"], answer: "ci" },
+            { question: "Życzę ___ zdrowia i szczęścia!", options: ["ci", "tobie"], answer: "ci" },
+            { question: "Gratuluję ___ nowej książki!", options: ["ci", "tobie"], answer: "ci" },
+            // Ćwiczenie 4 (z 'n' lub bez) - 5
+            { question: "Bartek choruje na choroby górnych dróg oddechowych. Ciągle na ___ choruje.", options: ["nie", "nich"], answer: "nie" },
+            { question: "Wstąpimy do sklepu po nowe rybki. Wstąpimy po ___.", options: ["nie", "nich"], answer: "nie" },
+            { question: "Marek starał się o nowe zlecenia. Marek starał się o ___.", options: ["nie", "nich"], answer: "nie" },
+            { question: "Pielęgniarka troszczy się o swoich starszych pacjentów. Troszczy się o ___.", options: ["nie", "nich"], answer: "nich" },
+            { question: "Marta martwi się o swoich rodziców. Martwi się o ___.", options: ["nie", "nich"], answer: "nich" },
+        ];
+
+        // --- Game State ---
+        let currentQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let incorrectAnswers = [];
+
+        // --- Loading State ---
+        function showLoading(text = 'Przetwarzanie...') {
+            loadingText.textContent = text;
+            loadingOverlay.style.display = 'flex';
+        }
+
+        function hideLoading() {
+            loadingOverlay.style.display = 'none';
+        }
+
+        // --- Game Logic ---
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function startGame(questionSet) {
+            initAudio();
+            currentQuestions = [...questionSet];
+            shuffleArray(currentQuestions);
+            currentQuestionIndex = 0;
+            score = 0;
+            incorrectAnswers = [];
+            
+            startScreen.classList.add('hidden');
+            resultsScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            
+            showQuestion();
+        }
+
+        function showQuestion() {
+            optionsContainer.innerHTML = '';
+            const question = currentQuestions[currentQuestionIndex];
+            const qNumber = currentQuestionIndex + 1;
+            const totalQ = currentQuestions.length;
+
+            questionText.textContent = question.question;
+            progressText.textContent = `${qNumber} / ${totalQ}`;
+            progressBar.style.width = `${(qNumber / totalQ) * 100}%`;
+            
+            question.options.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.classList.add('btn-answer', 'p-4', 'text-lg', 'font-semibold', 'rounded-xl', 'transition-all', 'duration-200', 'border-2', 'border-transparent', 'hover:border-indigo-400', 'hover:scale-105', 'glass-card');
+                button.style.backgroundColor = document.body.classList.contains('light') ? 'rgba(255, 255, 255, 0.8)' : 'rgba(55, 65, 81, 0.7)';
+                button.addEventListener('click', () => selectAnswer(option, button));
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function selectAnswer(selectedOption, clickedButton) {
+            const buttons = optionsContainer.querySelectorAll('button');
+            buttons.forEach(btn => btn.disabled = true);
+            
+            const question = currentQuestions[currentQuestionIndex];
+            const isCorrect = selectedOption === question.answer;
+
+            if (isCorrect) {
+                score++;
+                playSound('correct');
+                clickedButton.classList.add('correct');
+            } else {
+                playSound('incorrect');
+                clickedButton.classList.add('incorrect');
+                incorrectAnswers.push({ ...question, selected: selectedOption });
+                buttons.forEach(btn => {
+                    if (btn.textContent === question.answer) btn.classList.add('correct');
+                });
+            }
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                if (currentQuestionIndex < currentQuestions.length) {
+                    showQuestion();
+                } else {
+                    showResults();
+                }
+            }, 1500);
+        }
+        
+        function showResults() {
+            quizScreen.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+            
+            const percentage = Math.round((score / currentQuestions.length) * 100);
+            scoreText.textContent = `${percentage}%`;
+            
+            const analysisContent = document.getElementById('gemini-analysis-content');
+
+            if (incorrectAnswers.length > 0) {
+                reviewButton.classList.remove('hidden');
+                retryIncorrectButton.classList.remove('hidden');
+                geminiAnalyzeButton.classList.remove('hidden');
+                analysisContent.classList.add('hidden');
+                analysisContent.innerHTML = '';
+            } else {
+                reviewButton.classList.add('hidden');
+                retryIncorrectButton.classList.add('hidden');
+                geminiAnalyzeButton.classList.add('hidden');
+            }
+        }
+        
+        function showReview() {
+            reviewContent.innerHTML = '';
+            incorrectAnswers.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'p-4 rounded-lg border border-white/20';
+                div.innerHTML = `
+                    <p class="text-gray-400 text-sm">Pytanie:</p>
+                    <p class="text-lg mb-2">${item.question.replace('___', `<strong class="text-red-400">${item.selected}</strong>`)}</p>
+                    <p class="text-sm">Poprawna odpowiedź: <strong class="text-green-400">${item.answer}</strong></p>
+                    <div class="flex flex-wrap gap-2 mt-3">
+                        <button data-question-index="${index}" class="gemini-explain-btn text-sm gemini-btn py-1 px-3 rounded-md">✨ Dlaczego tak jest?</button>
+                        <button data-question-index="${index}" class="gemini-examples-btn text-sm gemini-btn py-1 px-3 rounded-md">✨ Pokaż przykłady</button>
+                    </div>
+                    <div class="explanation-container mt-3"></div>
+                    <div class="examples-container mt-3"></div>
+                `;
+                reviewContent.appendChild(div);
+            });
+            reviewModal.classList.remove('hidden', 'opacity-0');
+        }
+
+        // --- Gemini API Functions ---
+        const apiKey = "";
+
+        async function callGemini(prompt, schema = null) {
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            if (schema) {
+                payload.generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: schema,
+                };
+            }
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+
+            if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
+                return result.candidates[0].content.parts[0].text;
+            } else {
+                throw new Error("Invalid response structure from API.");
+            }
+        }
+
+        async function fetchGrammarExplanation(questionData, button) {
+            button.disabled = true;
+            button.innerHTML = '<div class="spinner mx-auto" style="width:16px; height:16px; border-width:2px;"></div>';
+            const prompt = `Jako ekspert od gramatyki polskiej, wyjaśnij prostym i zwięzłym językiem regułę gramatyczną, która ma zastosowanie w tym zdaniu: "${questionData.question}". Skup się na tym, dlaczego poprawną odpowiedzią jest "${questionData.answer}", a nie "${questionData.selected}". Nie używaj formatowania markdown.`;
+            
+            try {
+                const explanationText = await callGemini(prompt);
+                const explanationDiv = button.closest('.p-4').querySelector('.explanation-container');
+                explanationDiv.innerHTML = `<div class="gemini-explanation p-4 rounded-md mt-2 text-sm">${explanationText}</div>`;
+                button.remove();
+            } catch (error) {
+                console.error("Gemini API error (explanation):", error);
+                const explanationDiv = button.closest('.p-4').querySelector('.explanation-container');
+                explanationDiv.innerHTML = `<div class="gemini-explanation p-4 rounded-md mt-2 text-sm text-red-400">Nie udało się połączyć z usługą AI.</div>`;
+                button.innerHTML = '✨ Dlaczego tak jest?';
+                button.disabled = false;
+            }
+        }
+        
+        async function fetchMoreExamples(questionData, button) {
+            button.disabled = true;
+            button.innerHTML = '<div class="spinner mx-auto" style="width:16px; height:16px; border-width:2px;"></div>';
+            const prompt = `Podaj 2 nowe, różnorodne przykładowe zdania w języku polskim, które poprawnie używają zaimka "${questionData.answer}" w podobnym kontekście gramatycznym jak w zdaniu: "${questionData.question}". Zdania powinny być proste i zrozumiałe. Nie używaj formatowania markdown.`;
+
+            try {
+                const examplesText = await callGemini(prompt);
+                const formattedText = examplesText.split('\n').filter(line => line.trim() !== '').map(line => `<p class="italic text-gray-400 dark:text-gray-300">${line}</p>`).join('');
+                const examplesDiv = button.closest('.p-4').querySelector('.examples-container');
+                examplesDiv.innerHTML = `<div class="gemini-explanation p-3 rounded-md mt-2 text-sm">${formattedText}</div>`;
+                button.remove();
+            } catch (error) {
+                console.error("Gemini API error (examples):", error);
+                const examplesDiv = button.closest('.p-4').querySelector('.examples-container');
+                examplesDiv.innerHTML = `<div class="gemini-explanation p-3 rounded-md mt-2 text-sm text-red-400">Nie udało się połączyć z usługą AI.</div>`;
+                button.innerHTML = '✨ Pokaż przykłady';
+                button.disabled = false;
+            }
+        }
+        
+        async function fetchPerformanceAnalysis() {
+            showLoading('✨ Analizuję Twoje wyniki...');
+            const simplifiedErrors = incorrectAnswers.map(e => ({ pytanie: e.question, twojaOdpowiedz: e.selected, poprawnaOdpowiedz: e.answer }));
+            const prompt = `Jako nauczyciel języka polskiego, przeanalizuj poniższą listę błędów popełnionych przez ucznia w quizie na temat zaimków. Wskaż 1-2 główne typy błędów lub wzorce, które zauważasz. Udziel porady w sposób krótki, przyjazny i motywujący. Odpowiedź sformułuj bezpośrednio do ucznia. Błędy: ${JSON.stringify(simplifiedErrors)}`;
+
+            try {
+                const analysisText = await callGemini(prompt);
+                const analysisContent = document.getElementById('gemini-analysis-content');
+                analysisContent.innerHTML = analysisText.replace(/\n/g, '<br>');
+                analysisContent.classList.remove('hidden');
+                geminiAnalyzeButton.classList.add('hidden');
+            } catch (error) {
+                console.error("Gemini API error (analysis):", error);
+                alert("Nie udało się przeprowadzić analizy. Spróbuj ponownie.");
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function fetchNewQuestions() {
+            showLoading('✨ Generuję nowe pytania...');
+            const prompt = "Stwórz 5 unikalnych, nowych pytań quizowych dotyczących użycia krótkich i długich form zaimków w języku polskim. Skup się na częstych błędach. Pytania nie mogą się powtarzać z puli: 'Lubię czytać książki', 'Chciałabym poznać twoich przyjaciół', 'Niania obserwuje dzieci', 'Znasz jakieś polskie aktorki', '___ nigdy nie boli głowa', 'Ona ___ nigdy nie zdradzi', 'To przykra scena, gdy ___ obrażają', 'Matka dobrze się ___ opiekowała'.";
+            const schema = { type: "ARRAY", items: { type: "OBJECT", properties: { question: { type: "STRING" }, options: { type: "ARRAY", items: { type: "STRING" } }, answer: { type: "STRING" } }, required: ["question", "options", "answer"] } };
+            
+            try {
+                const newQuestionsText = await callGemini(prompt, schema);
+                const newQuestions = JSON.parse(newQuestionsText);
+                if (Array.isArray(newQuestions) && newQuestions.length > 0 && newQuestions[0].question) {
+                    startGame(newQuestions);
+                } else {
+                    throw new Error("Invalid data structure from API.");
+                }
+            } catch (error) {
+                console.error("Gemini API error (generating questions):", error);
+                alert("Nie udało się wygenerować nowych pytań. Spróbuj ponownie.");
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // --- Event Listeners ---
+        startButton.addEventListener('click', () => startGame(allQuestions));
+        playAgainButton.addEventListener('click', () => startGame(allQuestions));
+        retryIncorrectButton.addEventListener('click', () => {
+            const questionsForRetry = incorrectAnswers.map(({ selected, ...rest }) => rest);
+            startGame(questionsForRetry);
+        });
+        reviewButton.addEventListener('click', showReview);
+        geminiGenerateButton.addEventListener('click', fetchNewQuestions);
+        geminiAnalyzeButton.addEventListener('click', fetchPerformanceAnalysis);
+
+        reviewModal.addEventListener('click', function(event) {
+            const target = event.target.closest('button');
+            if (!target) return;
+
+            const questionIndex = target.dataset.questionIndex;
+            const questionData = incorrectAnswers[questionIndex];
+
+            if (target.classList.contains('gemini-explain-btn')) {
+                fetchGrammarExplanation(questionData, target);
+            }
+            
+            if (target.classList.contains('gemini-examples-btn')) {
+                fetchMoreExamples(questionData, target);
+            }
+        });
+
+        themeToggle.addEventListener('change', () => {
+            document.body.classList.toggle('light');
+            document.body.classList.toggle('dark');
+            if (!quizScreen.classList.contains('hidden')) {
+                const buttons = optionsContainer.querySelectorAll('button');
+                buttons.forEach(button => {
+                    button.style.backgroundColor = document.body.classList.contains('light') ? 'rgba(255, 255, 255, 0.8)' : 'rgba(55, 65, 81, 0.7)';
+                });
+            }
+        });
+    </script>
+</body>
+</html>

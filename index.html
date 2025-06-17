@@ -81,27 +81,28 @@
         @keyframes incorrect-shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
         
         #reviewModal { transition: opacity 0.3s ease; }
-        
-        .gemini-btn { background-color: rgba(139, 92, 246, 0.2); border: 1px solid #8B5CF6; }
-        .gemini-btn:hover { background-color: rgba(139, 92, 246, 0.4); }
-        .gemini-explanation { background-color: rgba(30, 41, 59, 0.5); border-left: 3px solid #8B5CF6; }
-        body.light .gemini-explanation { background-color: rgba(249, 250, 251, 0.8); }
-        
-        .spinner { border: 4px solid rgba(255,255,255,0.3); border-left-color: #fff; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
 
     </style>
 </head>
 <body class="dark">
 
-    <!-- Theme Switcher -->
-    <div class="absolute top-4 right-4 flex items-center space-x-2 text-sm z-10">
-        <span>☀️</span>
-        <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-            <input type="checkbox" name="toggle" id="theme-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
-            <label for="theme-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+    <!-- Top Right Controls -->
+    <div class="absolute top-4 right-4 flex items-center space-x-4 z-10">
+        <!-- Mute Button -->
+        <button id="mute-button" class="text-white/70 hover:text-white transition-colors">
+            <svg id="sound-on-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume-2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+            <svg id="sound-off-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume-x hidden"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>
+        </button>
+
+        <!-- Theme Switcher -->
+        <div class="flex items-center space-x-2 text-sm">
+            <span>☀️</span>
+            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                <input type="checkbox" name="toggle" id="theme-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                <label for="theme-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+            </div>
+            <span>🌙</span>
         </div>
-        <span>🌙</span>
     </div>
 
     <main class="min-h-screen w-full flex items-center justify-center p-4">
@@ -134,15 +135,7 @@
             <p class="text-2xl mb-6">Twój wynik:</p>
             <p id="score-text" class="text-7xl font-bold text-green-400 mb-8"></p>
             
-            <div id="gemini-analysis-container" class="my-6 text-left">
-                <button id="gemini-analyze-button" class="hidden gemini-btn w-full flex items-center justify-center text-white font-bold py-3 px-6 rounded-full transition-transform transform hover:scale-105 mb-4">✨ Przeanalizuj moje błędy</button>
-                <div id="gemini-analysis-content" class="gemini-explanation p-4 rounded-md hidden"></div>
-            </div>
-
-            <div id="gemini-actions" class="flex flex-col md:flex-row justify-center gap-4 mb-4">
-                 <button id="gemini-generate-button" class="gemini-btn flex items-center justify-center text-white font-bold py-3 px-6 rounded-full transition-transform transform hover:scale-105">✨ Wygeneruj nowe pytania</button>
-            </div>
-            <div class="flex flex-col md:flex-row justify-center gap-4">
+            <div class="flex flex-col md:flex-row justify-center gap-4 mt-8">
                 <button id="retry-incorrect-button" class="hidden bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 px-6 rounded-full transition-transform transform hover:scale-105">Popraw błędy</button>
                 <button id="review-button" class="hidden bg-blue-500 hover:bg-blue-400 text-white font-bold py-3 px-6 rounded-full transition-transform transform hover:scale-105">Zobacz błędy</button>
                 <button id="play-again-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-full transition-transform transform hover:scale-105">Zagraj jeszcze raz</button>
@@ -159,28 +152,17 @@
         </div>
     </div>
     
-    <!-- Loading overlay -->
-    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex-col items-center justify-center hidden z-50">
-        <div class="spinner"></div>
-        <p id="loading-text" class="text-white mt-4 text-lg">Przetwarzanie...</p>
-    </div>
-
     <script type="module">
         // --- DOM Elements ---
         const startScreen = document.getElementById('start-screen');
         const quizScreen = document.getElementById('quiz-screen');
         const resultsScreen = document.getElementById('results-screen');
-        const loadingOverlay = document.getElementById('loading-overlay');
-        const loadingText = document.getElementById('loading-text');
 
         const startButton = document.getElementById('start-button');
         const playAgainButton = document.getElementById('play-again-button');
         const reviewButton = document.getElementById('review-button');
         const retryIncorrectButton = document.getElementById('retry-incorrect-button');
         
-        const geminiGenerateButton = document.getElementById('gemini-generate-button');
-        const geminiAnalyzeButton = document.getElementById('gemini-analyze-button');
-
         const questionText = document.getElementById('question-text');
         const optionsContainer = document.getElementById('options-container');
         const progressText = document.getElementById('progress-text');
@@ -191,10 +173,15 @@
         const reviewContent = document.getElementById('review-content');
 
         const themeToggle = document.getElementById('theme-toggle');
+        const muteButton = document.getElementById('mute-button');
+        const soundOnIcon = document.getElementById('sound-on-icon');
+        const soundOffIcon = document.getElementById('sound-off-icon');
 
-        // --- Audio Context for Sound Effects ---
+        // --- Audio State ---
         let audioContext;
-        
+        let isMuted = false;
+
+        // --- Sound Generation ---
         function initAudio() {
             if (!audioContext) {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -202,27 +189,42 @@
         }
 
         function playSound(type) {
-            if (!audioContext) return;
-            const oscillator = audioContext.createOscillator();
+            if (!audioContext || isMuted) return;
+
+            const now = audioContext.currentTime;
             const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
-
+            gainNode.gain.setValueAtTime(0, now);
+            
             if (type === 'correct') {
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
-                oscillator.frequency.linearRampToValueAtTime(880, audioContext.currentTime + 0.1);
+                const osc = audioContext.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.linearRampToValueAtTime(800, now + 0.1);
+                gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+                osc.connect(gainNode).connect(audioContext.destination);
+                osc.start(now);
+                osc.stop(now + 0.2);
             } else if (type === 'incorrect') {
-                oscillator.type = 'square';
-                oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
-                oscillator.frequency.linearRampToValueAtTime(150, audioContext.currentTime + 0.15);
+                const osc = audioContext.createOscillator();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+                gainNode.gain.linearRampToValueAtTime(0.25, now + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+                osc.connect(gainNode).connect(audioContext.destination);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'click') {
+                const osc = audioContext.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now);
+                gainNode.gain.linearRampToValueAtTime(0.5, now + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+                osc.connect(gainNode).connect(audioContext.destination);
+                osc.start(now);
+                osc.stop(now + 0.1);
             }
-
-            oscillator.start(audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
-            oscillator.stop(audioContext.currentTime + 0.3);
         }
         
         // --- Questions Database ---
@@ -232,9 +234,9 @@
             { question: "Chciałabym poznać twoich przyjaciół. Chciałabym ___ poznać.", options: ["je", "ich"], answer: "ich" },
             { question: "Niania obserwuje dzieci. Niania ___ obserwuje.", options: ["je", "ich"], answer: "je" },
             { question: "Znasz jakieś polskie aktorki? Znasz ___?", options: ["je", "ich"], answer: "je" },
-            { question: "Widziałam w sklepie świetne nowe komputery. Widziałam ___ w sklepie.", options: ["je", "ich"], answer: "ich" },
+            { question: "Widziałam w sklepie świetne nowe komputery. Widziałam ___ w sklepie.", options: ["je", "ich"], answer: "je" }, // CORRECTED
             // Ćwiczenie 1 (różne formy) - 5
-            { question: "___ nigdy nie boli głowa.", options: ["Mi", "Mnie"], answer: "Mi" },
+            { question: "___ nigdy nie boli głowa.", options: ["Mi", "Mnie"], answer: "Mnie" },
             { question: "Ona ___ nigdy nie zdradzi.", options: ["ci", "ciebie", "cię"], answer: "cię" },
             { question: "To przykra scena, gdy ___ obrażają.", options: ["jej", "ją"], answer: "ją" },
             { question: "Matka dobrze się ___ opiekowała.", options: ["nią", "jej", "niej"], answer: "nią" },
@@ -265,16 +267,6 @@
         let score = 0;
         let incorrectAnswers = [];
 
-        // --- Loading State ---
-        function showLoading(text = 'Przetwarzanie...') {
-            loadingText.textContent = text;
-            loadingOverlay.style.display = 'flex';
-        }
-
-        function hideLoading() {
-            loadingOverlay.style.display = 'none';
-        }
-
         // --- Game Logic ---
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
@@ -285,6 +277,7 @@
 
         function startGame(questionSet) {
             initAudio();
+            playSound('click');
             currentQuestions = [...questionSet];
             shuffleArray(currentQuestions);
             currentQuestionIndex = 0;
@@ -355,22 +348,17 @@
             const percentage = Math.round((score / currentQuestions.length) * 100);
             scoreText.textContent = `${percentage}%`;
             
-            const analysisContent = document.getElementById('gemini-analysis-content');
-
             if (incorrectAnswers.length > 0) {
                 reviewButton.classList.remove('hidden');
                 retryIncorrectButton.classList.remove('hidden');
-                geminiAnalyzeButton.classList.remove('hidden');
-                analysisContent.classList.add('hidden');
-                analysisContent.innerHTML = '';
             } else {
                 reviewButton.classList.add('hidden');
                 retryIncorrectButton.classList.add('hidden');
-                geminiAnalyzeButton.classList.add('hidden');
             }
         }
         
         function showReview() {
+            playSound('click');
             reviewContent.innerHTML = '';
             incorrectAnswers.forEach((item, index) => {
                 const div = document.createElement('div');
@@ -379,157 +367,33 @@
                     <p class="text-gray-400 text-sm">Pytanie:</p>
                     <p class="text-lg mb-2">${item.question.replace('___', `<strong class="text-red-400">${item.selected}</strong>`)}</p>
                     <p class="text-sm">Poprawna odpowiedź: <strong class="text-green-400">${item.answer}</strong></p>
-                    <div class="flex flex-wrap gap-2 mt-3">
-                        <button data-question-index="${index}" class="gemini-explain-btn text-sm gemini-btn py-1 px-3 rounded-md">✨ Dlaczego tak jest?</button>
-                        <button data-question-index="${index}" class="gemini-examples-btn text-sm gemini-btn py-1 px-3 rounded-md">✨ Pokaż przykłady</button>
-                    </div>
-                    <div class="explanation-container mt-3"></div>
-                    <div class="examples-container mt-3"></div>
                 `;
                 reviewContent.appendChild(div);
             });
             reviewModal.classList.remove('hidden', 'opacity-0');
         }
 
-        // --- Gemini API Functions ---
-        const apiKey = "";
-
-        async function callGemini(prompt, schema = null) {
-            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
-            if (schema) {
-                payload.generationConfig = {
-                    responseMimeType: "application/json",
-                    responseSchema: schema,
-                };
-            }
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const result = await response.json();
-
-            if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
-                return result.candidates[0].content.parts[0].text;
-            } else {
-                throw new Error("Invalid response structure from API.");
-            }
-        }
-
-        async function fetchGrammarExplanation(questionData, button) {
-            button.disabled = true;
-            button.innerHTML = '<div class="spinner mx-auto" style="width:16px; height:16px; border-width:2px;"></div>';
-            const prompt = `Jako ekspert od gramatyki polskiej, wyjaśnij prostym i zwięzłym językiem regułę gramatyczną, która ma zastosowanie w tym zdaniu: "${questionData.question}". Skup się na tym, dlaczego poprawną odpowiedzią jest "${questionData.answer}", a nie "${questionData.selected}". Nie używaj formatowania markdown.`;
-            
-            try {
-                const explanationText = await callGemini(prompt);
-                const explanationDiv = button.closest('.p-4').querySelector('.explanation-container');
-                explanationDiv.innerHTML = `<div class="gemini-explanation p-4 rounded-md mt-2 text-sm">${explanationText}</div>`;
-                button.remove();
-            } catch (error) {
-                console.error("Gemini API error (explanation):", error);
-                const explanationDiv = button.closest('.p-4').querySelector('.explanation-container');
-                explanationDiv.innerHTML = `<div class="gemini-explanation p-4 rounded-md mt-2 text-sm text-red-400">Nie udało się połączyć z usługą AI.</div>`;
-                button.innerHTML = '✨ Dlaczego tak jest?';
-                button.disabled = false;
-            }
-        }
-        
-        async function fetchMoreExamples(questionData, button) {
-            button.disabled = true;
-            button.innerHTML = '<div class="spinner mx-auto" style="width:16px; height:16px; border-width:2px;"></div>';
-            const prompt = `Podaj 2 nowe, różnorodne przykładowe zdania w języku polskim, które poprawnie używają zaimka "${questionData.answer}" w podobnym kontekście gramatycznym jak w zdaniu: "${questionData.question}". Zdania powinny być proste i zrozumiałe. Nie używaj formatowania markdown.`;
-
-            try {
-                const examplesText = await callGemini(prompt);
-                const formattedText = examplesText.split('\n').filter(line => line.trim() !== '').map(line => `<p class="italic text-gray-400 dark:text-gray-300">${line}</p>`).join('');
-                const examplesDiv = button.closest('.p-4').querySelector('.examples-container');
-                examplesDiv.innerHTML = `<div class="gemini-explanation p-3 rounded-md mt-2 text-sm">${formattedText}</div>`;
-                button.remove();
-            } catch (error) {
-                console.error("Gemini API error (examples):", error);
-                const examplesDiv = button.closest('.p-4').querySelector('.examples-container');
-                examplesDiv.innerHTML = `<div class="gemini-explanation p-3 rounded-md mt-2 text-sm text-red-400">Nie udało się połączyć z usługą AI.</div>`;
-                button.innerHTML = '✨ Pokaż przykłady';
-                button.disabled = false;
-            }
-        }
-        
-        async function fetchPerformanceAnalysis() {
-            showLoading('✨ Analizuję Twoje wyniki...');
-            const simplifiedErrors = incorrectAnswers.map(e => ({ pytanie: e.question, twojaOdpowiedz: e.selected, poprawnaOdpowiedz: e.answer }));
-            const prompt = `Jako nauczyciel języka polskiego, przeanalizuj poniższą listę błędów popełnionych przez ucznia w quizie na temat zaimków. Wskaż 1-2 główne typy błędów lub wzorce, które zauważasz. Udziel porady w sposób krótki, przyjazny i motywujący. Odpowiedź sformułuj bezpośrednio do ucznia. Błędy: ${JSON.stringify(simplifiedErrors)}`;
-
-            try {
-                const analysisText = await callGemini(prompt);
-                const analysisContent = document.getElementById('gemini-analysis-content');
-                analysisContent.innerHTML = analysisText.replace(/\n/g, '<br>');
-                analysisContent.classList.remove('hidden');
-                geminiAnalyzeButton.classList.add('hidden');
-            } catch (error) {
-                console.error("Gemini API error (analysis):", error);
-                alert("Nie udało się przeprowadzić analizy. Spróbuj ponownie.");
-            } finally {
-                hideLoading();
-            }
-        }
-
-        async function fetchNewQuestions() {
-            showLoading('✨ Generuję nowe pytania...');
-            const prompt = "Stwórz 5 unikalnych, nowych pytań quizowych dotyczących użycia krótkich i długich form zaimków w języku polskim. Skup się na częstych błędach. Pytania nie mogą się powtarzać z puli: 'Lubię czytać książki', 'Chciałabym poznać twoich przyjaciół', 'Niania obserwuje dzieci', 'Znasz jakieś polskie aktorki', '___ nigdy nie boli głowa', 'Ona ___ nigdy nie zdradzi', 'To przykra scena, gdy ___ obrażają', 'Matka dobrze się ___ opiekowała'.";
-            const schema = { type: "ARRAY", items: { type: "OBJECT", properties: { question: { type: "STRING" }, options: { type: "ARRAY", items: { type: "STRING" } }, answer: { type: "STRING" } }, required: ["question", "options", "answer"] } };
-            
-            try {
-                const newQuestionsText = await callGemini(prompt, schema);
-                const newQuestions = JSON.parse(newQuestionsText);
-                if (Array.isArray(newQuestions) && newQuestions.length > 0 && newQuestions[0].question) {
-                    startGame(newQuestions);
-                } else {
-                    throw new Error("Invalid data structure from API.");
-                }
-            } catch (error) {
-                console.error("Gemini API error (generating questions):", error);
-                alert("Nie udało się wygenerować nowych pytań. Spróbuj ponownie.");
-            } finally {
-                hideLoading();
-            }
-        }
-
         // --- Event Listeners ---
         startButton.addEventListener('click', () => startGame(allQuestions));
-        playAgainButton.addEventListener('click', () => startGame(allQuestions));
+        playAgainButton.addEventListener('click', () => {
+            playSound('click');
+            startGame(allQuestions);
+        });
         retryIncorrectButton.addEventListener('click', () => {
+            playSound('click');
             const questionsForRetry = incorrectAnswers.map(({ selected, ...rest }) => rest);
             startGame(questionsForRetry);
         });
         reviewButton.addEventListener('click', showReview);
-        geminiGenerateButton.addEventListener('click', fetchNewQuestions);
-        geminiAnalyzeButton.addEventListener('click', fetchPerformanceAnalysis);
 
-        reviewModal.addEventListener('click', function(event) {
-            const target = event.target.closest('button');
-            if (!target) return;
-
-            const questionIndex = target.dataset.questionIndex;
-            const questionData = incorrectAnswers[questionIndex];
-
-            if (target.classList.contains('gemini-explain-btn')) {
-                fetchGrammarExplanation(questionData, target);
-            }
-            
-            if (target.classList.contains('gemini-examples-btn')) {
-                fetchMoreExamples(questionData, target);
-            }
+        muteButton.addEventListener('click', () => {
+            isMuted = !isMuted;
+            soundOnIcon.classList.toggle('hidden', isMuted);
+            soundOffIcon.classList.toggle('hidden', !isMuted);
         });
 
         themeToggle.addEventListener('change', () => {
+            playSound('click');
             document.body.classList.toggle('light');
             document.body.classList.toggle('dark');
             if (!quizScreen.classList.contains('hidden')) {
